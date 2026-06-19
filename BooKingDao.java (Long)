@@ -13,107 +13,38 @@ public class BookingDAO {
     // ==========================================
     // 1. THÊM BOOKING MỚI
     // ==========================================
-   public boolean addBooking(Booking b) {
-    // Thêm cột CreatedAt vào câu lệnh SQL
-    String sql = "INSERT INTO Bookings "
-               + "(CustomerID, LicensePlate, ServiceType, BookingDate, BookingTime, BookingStatus, Price, PaymentStatus, CreatedAt) "
-               + "VALUES (?,?,?,?,?,?,?,?,GETDATE())";
+    public boolean addBooking(Booking b) {
+        String sql = "INSERT INTO Bookings "
+                   + "(CustomerID, LicensePlate, ServiceType, BookingDate, BookingTime, BookingStatus, Price, PaymentStatus, CreatedAt) "
+                   + "VALUES (?,?,?,?,?,?,?,?,GETDATE())";
 
-    try (Connection cn = DBContext.getConnection();
-         PreparedStatement st = cn.prepareStatement(sql)) {
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql)) {
 
-        st.setInt(1, b.getCustomerID());
-        st.setString(2, b.getLicensePlate());
-        st.setString(3, b.getServiceType());
-        st.setString(4, b.getBookingDate());
-        st.setString(5, b.getBookingTime());
-        st.setString(6, b.getStatus());
-        st.setDouble(7, b.getPrice());
-        st.setString(8, b.getPaymentStatus());
+            st.setInt(1, b.getCustomerID());
+            st.setString(2, b.getLicensePlate());
+            st.setString(3, b.getServiceType());
+            st.setString(4, b.getBookingDate());
+            st.setString(5, b.getBookingTime());
+            st.setString(6, b.getStatus());
+            st.setDouble(7, b.getPrice());
+            st.setString(8, b.getPaymentStatus());
 
-        return st.executeUpdate() > 0;
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
-    return false;
-}
-   // =========================
-    // HỦY BOOKING VÀ TỰ ĐỘNG HOÀN TIỀN VÀO VÍ
-    // =========================
-    public boolean cancelBooking(int bookingID) {
-        String sqlSelect = "SELECT CustomerID, Price, PaymentStatus FROM Bookings WHERE BookingID = ?";
-        String sqlUpdateBooking = "UPDATE Bookings SET BookingStatus = 'Cancelled', PaymentStatus = ? WHERE BookingID = ?";
-        String sqlUpdateWallet = "UPDATE Customers SET Wallet = Wallet + ? WHERE CustomerID = ?";
-
-        Connection cn = null;
-        PreparedStatement stSelect = null;
-        PreparedStatement stBooking = null;
-        PreparedStatement stWallet = null;
-        ResultSet rs = null;
-
-        try {
-            cn = DBContext.getConnection();
-            if (cn != null) {
-                cn.setAutoCommit(false); // Bật Transaction an toàn dữ liệu
-
-                int customerID = 0;
-                double price = 0;
-                String paymentStatus = "";
-
-                // 1. Kiểm tra thông tin đơn đặt lịch
-                stSelect = cn.prepareStatement(sqlSelect);
-                stSelect.setInt(1, bookingID);
-                rs = stSelect.executeQuery();
-                if (rs.next()) {
-                    customerID = rs.getInt("CustomerID");
-                    price = rs.getDouble("Price");
-                    paymentStatus = rs.getString("PaymentStatus");
-                }
-
-                String nextPaymentStatus = (paymentStatus != null) ? paymentStatus : "Unpaid";
-                
-                // 2. Nếu đơn này ĐÃ THANH TOÁN (Paid) -> Hoàn tiền vào ví Customers
-                if ("Paid".equalsIgnoreCase(paymentStatus)) {
-                    stWallet = cn.prepareStatement(sqlUpdateWallet);
-                    stWallet.setDouble(1, price);
-                    stWallet.setInt(2, customerID);
-                    stWallet.executeUpdate();
-                    
-                    nextPaymentStatus = "Refunded"; // Đổi trạng thái thanh toán thành đã hoàn tiền
-                }
-
-                // 3. Cập nhật trạng thái lịch đặt thành Cancelled
-                stBooking = cn.prepareStatement(sqlUpdateBooking);
-                stBooking.setString(1, nextPaymentStatus);
-                stBooking.setInt(2, bookingID);
-                int rows = stBooking.executeUpdate();
-
-                cn.commit(); // Hoàn thành toàn bộ tiến trình
-                return rows > 0;
-            }
+            return st.executeUpdate() > 0;
         } catch (Exception e) {
-            if (cn != null) {
-                try { cn.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
-            }
             e.printStackTrace();
-        } finally {
-            try { if (rs != null) rs.close(); } catch (Exception e) {}
-            try { if (stSelect != null) stSelect.close(); } catch (Exception e) {}
-            try { if (stWallet != null) stWallet.close(); } catch (Exception e) {}
-            try { if (stBooking != null) stBooking.close(); } catch (Exception e) {}
-            try { if (cn != null) cn.close(); } catch (Exception e) {}
         }
         return false;
     }
 
     // ==========================================
-    // 2. LẤY TOÀN BỘ LỊCH SỬ BOOKING CỦA KHIẾCH HÀNG (1 THAM SỐ - GIỮ NGUYÊN)
+    // 2. LẤY TOÀN BỘ LỊCH SỬ BOOKING CỦA KHÁCH HÀNG
     // ==========================================
     public ArrayList<Booking> getBookingsByCustomer(int custID) {
         ArrayList<Booking> list = new ArrayList<>();
         String sql = "SELECT * FROM Bookings "
                    + "WHERE CustomerID = ? "
-                   + "ORDER BY BookingDate DESC, BookingID DESC"; // Đưa lịch mới nhất lên đầu
+                   + "ORDER BY BookingDate DESC, BookingID DESC";
 
         try (Connection cn = DBContext.getConnection();
              PreparedStatement st = cn.prepareStatement(sql)) {
@@ -148,7 +79,7 @@ public class BookingDAO {
     }
 
     // ==========================================
-    // 3. LỌC LỊCH SỬ BOOKING THEO KHOẢNG NGÀY (3 THAM SỐ)
+    // 3. LỌC LỊCH SỬ BOOKING THEO KHOẢNG NGÀY
     // ==========================================
     public ArrayList<Booking> getBookingsByCustomerAndDate(int custID, String startDate, String endDate) {
         ArrayList<Booking> list = new ArrayList<>();
@@ -192,82 +123,134 @@ public class BookingDAO {
     }
 
     // ==========================================
-    // 4. HỦY BOOKING
+    // 4. HỦY BOOKING VÀ TỰ ĐỘNG HOÀN TIỀN / TẶNG VOUCHER (THEO ẢNH LOGIC)
     // ==========================================
-  public String cancelAndRefundBooking(int bookingID, int custID) {
-    String message = "Đã hủy lịch đặt thành công!";
-    
-    // Câu lệnh kiểm tra thông tin đơn đặt và tính khoảng cách thời gian (theo phút) từ lúc đặt đến lúc hủy
-    String sqlCheck = "SELECT Price, PaymentStatus, BookingStatus, DATEDIFF(MINUTE, CreatedAt, GETDATE()) AS MinutesPassed "
-                    + "FROM Bookings WHERE BookingID = ?";
-    
-    String sqlCancel = "UPDATE Bookings SET BookingStatus = 'Cancelled' WHERE BookingID = ?";
-    String sqlRefund = "UPDATE Customers SET Wallet = Wallet + ? WHERE CustomerID = ?";
+    public String cancelAndRefundBooking(int bookingID, int custID) {
+        // SQL: Tính số phút chênh lệch từ THỜI ĐIỂM HỦY HIỆN TẠI (GETDATE()) tới GIỜ HẸN RỬA XE
+       // ĐOẠN CODE CŨ ĐANG BỊ LỖI:
+            String sqlCheck = "SELECT CustomerID, Price, PaymentStatus, BookingStatus, "
+                + "DATEDIFF(MINUTE, GETDATE(), CAST(BookingDate AS DATETIME) + CAST(BookingTime AS DATETIME)) AS MinutesLeft "
+                + "FROM Bookings WHERE BookingID = ?";
+        
+        String sqlCancel  = "UPDATE Bookings SET BookingStatus='Cancelled', PaymentStatus=? WHERE BookingID=? AND CustomerID=?";
+        String sqlRefund  = "UPDATE Customers SET Wallet = Wallet + ? WHERE CustomerID = ?";
+        String sqlVoucher = "INSERT INTO Vouchers (CustomerID, Code, DiscountPercent, ExpireAt) VALUES (?,?,?,?)";
 
-    Connection cn = null;
-    try {
-        cn = DBContext.getConnection();
-        cn.setAutoCommit(false); // Kích hoạt Transaction để đảm bảo an toàn dữ liệu
+        Connection cn = null;
+        try {
+            cn = DBContext.getConnection();
+            if (cn == null) return "Lỗi kết nối cơ sở dữ liệu.";
+            
+            cn.setAutoCommit(false); // Kích hoạt Transaction an toàn dữ liệu
 
-        double price = 0;
-        String paymentStatus = "";
-        String bookingStatus = "";
-        int minutesPassed = 0;
+            int ownerID = -1, t = 0; // t là số phút còn lại tới giờ hẹn (MinutesLeft)
+            double price = 0;
+            String paymentStatus = "", bookingStatus = "";
 
-        try (PreparedStatement stCheck = cn.prepareStatement(sqlCheck)) {
-            stCheck.setInt(1, bookingID);
-            try (ResultSet rs = stCheck.executeQuery()) {
-                if (rs.next()) {
-                    price = rs.getDouble("Price");
-                    paymentStatus = rs.getString("PaymentStatus");
-                    bookingStatus = rs.getString("BookingStatus");
-                    minutesPassed = rs.getInt("MinutesPassed");
+            // --- Đọc dữ liệu kiểm tra đơn đặt ---
+            try (PreparedStatement st = cn.prepareStatement(sqlCheck)) {
+                st.setInt(1, bookingID);
+                try (ResultSet rs = st.executeQuery()) {
+                    if (rs.next()) {
+                        ownerID       = rs.getInt("CustomerID");
+                        price         = rs.getDouble("Price");
+                        paymentStatus = rs.getString("PaymentStatus");
+                        bookingStatus = rs.getString("BookingStatus");
+                        t             = rs.getInt("MinutesLeft");
+                    }
                 }
             }
-        }
 
-        // Nếu lịch đã hủy hoặc hoàn thành rồi thì không xử lý nữa
-        if ("Cancelled".equalsIgnoreCase(bookingStatus) || "Completed".equalsIgnoreCase(bookingStatus)) {
-            return "Lịch đặt này không khả dụng để hủy.";
-        }
-
-        // 1. Thực hiện hủy đơn trước
-        try (PreparedStatement stCancel = cn.prepareStatement(sqlCancel)) {
-            stCancel.setInt(1, bookingID);
-            stCancel.executeUpdate();
-        }
-
-        // 2. Xét điều kiện hoàn tiền: Đã thanh toán (Paid) VÀ trong vòng 2 tiếng (120 phút)
-        if ("Paid".equalsIgnoreCase(paymentStatus) && minutesPassed <= 120) {
-            double refundAmount = price * 0.75; // Hoàn lại 75%
-
-            try (PreparedStatement stRefund = cn.prepareStatement(sqlRefund)) {
-                stRefund.setDouble(1, refundAmount);
-                stRefund.setInt(2, custID);
-                stRefund.executeUpdate();
+            // Kiểm tra tính hợp lệ cơ bản
+            if (ownerID == -1)      { cn.rollback(); return "Không tìm thấy lịch đặt."; }
+            if (ownerID != custID)  { cn.rollback(); return "Bạn không có quyền hủy lịch đặt này."; }
+            if ("Cancelled".equalsIgnoreCase(bookingStatus) || "Completed".equalsIgnoreCase(bookingStatus)) {
+                cn.rollback(); return "Lịch đặt này đã được xử lý hoặc đã hoàn thành, không thể hủy.";
             }
-            message = "Đã hủy lịch và hoàn lại 75% số tiền (" + String.format("%,.0f", refundAmount) + " VNĐ) vào ví của bạn!";
-        } else if ("Paid".equalsIgnoreCase(paymentStatus) && minutesPassed > 120) {
-            message = "Đã hủy lịch thành công. Do quá thời gian quy định 2 tiếng kể từ lúc đặt, bạn không được hoàn tiền.";
-        }
 
-        cn.commit(); // Hoàn tất giao dịch thành công
-    } catch (Exception e) {
-        if (cn != null) {
-            try { cn.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
-        }
-        e.printStackTrace();
-        return "Lỗi hệ thống khi xử lý hủy lịch.";
-    } finally {
-        if (cn != null) {
-            try { cn.close(); } catch (Exception e) { e.printStackTrace(); }
+            // --- Áp dụng cây điều kiện phân hoạch theo ảnh quy định ---
+            double refundPercent = 0.0;
+            boolean giveVoucher = false;
+
+            if (t > 1800) {
+                refundPercent = 1.00;        // T > 1800 (Còn > 30 tiếng) -> Hoàn 100%
+            } else if (t > 1440) {
+                refundPercent = 0.75;        // 1440 < T <= 1800 (Còn 24-30 tiếng) -> Hoàn 75%
+            } else if (t > 720) {
+                refundPercent = 0.50;        // 720 < T <= 1440 (Còn 12-24 tiếng) -> Hoàn 50%
+            } else if (t > 120) {
+                refundPercent = 0.25;        // 120 < T <= 720 (Còn 2-12 tiếng) -> Hoàn 25%
+            } else if (t > 20) {
+                refundPercent = 0.00;        // 20 < T <= 120 (Còn 20 phút - 2 tiếng) -> Hoàn 0%
+            } else {
+                refundPercent = 0.00;        // T <= 20 (Còn <= 20 phút, hoặc đã quá giờ) -> Hoàn 0% + Tặng mã 10%
+                giveVoucher = true;
+            }
+
+            boolean isPaid       = "Paid".equalsIgnoreCase(paymentStatus);
+            double  refundAmount = isPaid ? price * refundPercent : 0;
+            String  nextPayment  = (isPaid && refundAmount > 0) ? "Refunded" : paymentStatus;
+
+            // 1. Cập nhật trạng thái lịch đặt sang 'Cancelled'
+            try (PreparedStatement st = cn.prepareStatement(sqlCancel)) {
+                st.setString(1, nextPayment);
+                st.setInt(2, bookingID);
+                st.setInt(3, custID);
+                st.executeUpdate();
+            }
+
+            // 2. Thực hiện cộng tiền hoàn lại vào Ví tài khoản của khách
+            if (refundAmount > 0) {
+                try (PreparedStatement st = cn.prepareStatement(sqlRefund)) {
+                    st.setDouble(1, refundAmount);
+                    st.setInt(2, ownerID);
+                    st.executeUpdate();
+                }
+            }
+
+            // 3. Khởi tạo và cấp tặng voucher giảm giá 10% (nếu rơi vào khung ưu đãi)
+            String voucherCode = null;
+            if (giveVoucher) {
+                voucherCode = "SAVE10-" + bookingID + "-" + (System.currentTimeMillis() % 100000);
+                try (PreparedStatement st = cn.prepareStatement(sqlVoucher)) {
+                    st.setInt(1, ownerID);
+                    st.setString(2, voucherCode);
+                    st.setInt(3, 10);
+                    st.setTimestamp(4, new java.sql.Timestamp(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)); // Hạn 30 ngày
+                    st.executeUpdate();
+                }
+            }
+
+            cn.commit(); // Ghi nhận thay đổi thành công đồng bộ xuống DB
+
+            // Xử lý thông điệp gửi về Client hiển thị lên màn hình giao diện
+            int pct = (int) (refundPercent * 100);
+            if (giveVoucher) {
+                return "Đã hủy lịch. Do thời gian tới giờ hẹn còn dưới 20 phút nên không hoàn tiền, hệ thống tặng bạn mã giảm 10%: " + voucherCode;
+            }
+            if (refundAmount > 0) {
+                return "Đã hủy lịch thành công. Hệ thống đã hoàn lại " + pct + "% tiền (" + String.format("%,.0f", refundAmount) + " VNĐ) vào ví của bạn!";
+            }
+            if (isPaid) {
+                return "Đã hủy lịch thành công. Theo quy định khung giờ này mức hoàn tiền là 0%.";
+            }
+            return "Đã hủy lịch đặt thành công (Hệ thống không hoàn tiền do đơn chưa thanh toán).";
+
+        } catch (Exception e) {
+            if (cn != null) {
+                try { cn.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+            return "Lỗi hệ thống khi xử lý hủy lịch.";
+        } finally {
+            if (cn != null) {
+                try { cn.setAutoCommit(true); cn.close(); } catch (Exception e) { e.printStackTrace(); }
+            }
         }
     }
-    return message;
-}
 
     // ==========================================
-    // 5. CHECK-IN ĐƠN ĐẶT LỊCH (Mới bổ sung)
+    // 5. CHECK-IN ĐƠN ĐẶT LỊCH
     // ==========================================
     public boolean checkInBooking(int bookingID) {
         String sql = "UPDATE Bookings "
@@ -286,7 +269,7 @@ public class BookingDAO {
     }
 
     // ==========================================
-    // 6. XÁC NHẬN HOÀN TẤT THANH TOÁN QR / TẠI QUẦY (Mới bổ sung)
+    // 6. XÁC NHẬN HOÀN TẤT THANH TOÁN QR / TẠI QUẦY
     // ==========================================
     public boolean completePayment(int bookingID) {
         String sql = "UPDATE Bookings "
