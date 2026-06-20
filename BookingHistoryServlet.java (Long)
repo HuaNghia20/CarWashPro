@@ -1,6 +1,7 @@
 package controller;
 
 import dao.BookingDAO;
+import dao.UserDAO;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.servlet.ServletException;
@@ -34,19 +35,25 @@ public class BookingHistoryServlet extends HttpServlet {
         // 2. Xử lý các hành động (Actions) từ giao diện gửi lên
         String action = request.getParameter("action");
 
-        // --- HÀNH ĐỘNG HỦY LỊCH ĐẶT ---
-       if ("cancel".equals(action)) {
+       // --- HÀNH ĐỘNG HỦY LỊCH ĐẶT ---
+        if ("cancel".equals(action)) {
             try {
                 int bookingID = Integer.parseInt(request.getParameter("id"));
                 
-                // Gọi hàm hủy lịch kèm xử lý kiểm tra hoàn tiền 75%
+                // Gọi hàm hủy lịch kèm xử lý kiểm tra hoàn tiền 
                 String resultMessage = dao.cancelAndRefundBooking(bookingID, user.getCustID());
                 
-                // Cập nhật lại thông tin User trong session để hiển thị số dư ví mới ngay lập tức
-                dao.updateExpiredBookings(); // Quét trạng thái cũ nếu cần
-                
+                // --- BẮT ĐẦU ĐOẠN CODE BẠN THÊM VÀO ---
                 // Đẩy thông báo ra màn hình
                 session.setAttribute("MESSAGE", resultMessage);
+
+                // Cập nhật lại session USER để giao diện hiển thị đúng số dư ví mới sau khi được hoàn tiền
+                dao.updateExpiredBookings(); 
+                UserDAO userDAO = new UserDAO();
+                User updatedUser = userDAO.getUser(user.getEmail()); // Lấy lại user mới từ DB
+                session.setAttribute("USER", updatedUser);
+                // --- KẾT THÚC ĐOẠN CODE ---
+                
             } catch (NumberFormatException e) {
                 e.printStackTrace();
             }
