@@ -16,281 +16,109 @@ import model.User;
 public class BookingServlet extends HttpServlet {
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-
         if (session == null || session.getAttribute("USER") == null) {
             response.sendRedirect("login_page.jsp");
             return;
         }
 
         String action = request.getParameter("action");
+        BookingDAO bookingDAO = new BookingDAO();
+        CarDAO carDAO = new CarDAO();
+        User user = (User) session.getAttribute("USER");
 
-        // ================= AJAX LOAD SLOT =================
         if ("getSlots".equals(action)) {
-
             String date = request.getParameter("date");
-
-            BookingDAO dao = new BookingDAO();
-            List<String> busySlots = dao.getBusySlots(date);
-
-            String[] allSlots = {
-                "07:00 - 08:00",
-                "08:00 - 09:00",
-                "09:00 - 10:00",
-                "10:00 - 11:00",
-                "13:00 - 14:00",
-                "14:00 - 15:00",
-                "15:00 - 16:00",
-                "16:00 - 17:00",
-                "18:00 - 19:00",
-                "19:00 - 20:00",
-                "20:00 - 21:00",
-                "21:00 - 22:00"
-            };
-
+            List<String> busySlots = bookingDAO.getBusySlots(date);
+            String[] allSlots = {"07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00", "10:00 - 11:00", "13:00 - 14:00", "14:00 - 15:00", "15:00 - 16:00", "16:00 - 17:00", "18:00 - 19:00", "19:00 - 20:00", "20:00 - 21:00", "21:00 - 22:00"};
             response.setContentType("text/html;charset=UTF-8");
-
             StringBuilder html = new StringBuilder();
-
             for (String slot : allSlots) {
-
-                boolean isBusy = busySlots.contains(slot);
-                boolean isPast = false;
-
-                try {
-                    LocalDate selectedDate = LocalDate.parse(date);
-
-                    if (selectedDate.equals(LocalDate.now())) {
-
-                        String startTime = slot.split("-")[0].trim();
-
-                        LocalTime slotStart = LocalTime.parse(startTime);
-
-                        if (slotStart.isBefore(LocalTime.now())) {
-                            isPast = true;
-                        }
-                    }
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-                boolean disabled = isBusy || isPast;
-
-                String slotId = slot.replace(" ", "")
-                        .replace("-", "");
-
-                html.append("<div class='col-6 col-md-3'>");
-
-                html.append("<input type='radio' class='btn-check' ")
-                        .append("name='bookingTime' ")
-                        .append("id='slot").append(slotId).append("' ")
-                        .append("value='").append(slot).append("' ")
-                        .append(disabled ? "disabled" : "")
-                        .append(" required>");
-
-                html.append("<label class='btn btn-slot-custom ")
-                        .append(disabled
-                                ? "btn-secondary"
-                                : "btn-outline-warning")
-                        .append(" w-100' ")
-                        .append("for='slot").append(slotId).append("' ")
-                        .append("style='")
-                        .append(disabled
-                                ? "cursor:not-allowed;opacity:0.5;"
-                                : "")
-                        .append("'>")
-                        .append(slot)
-                        .append("</label>");
-
-                html.append("</div>");
+                boolean disabled = busySlots.contains(slot);
+                if (LocalDate.parse(date).equals(LocalDate.now()) && LocalTime.parse(slot.split("-")[0].trim()).isBefore(LocalTime.now())) disabled = true;
+                String slotId = slot.replace(" ", "").replace("-", "");
+                html.append("<div class='col-6 col-md-3'><input type='radio' class='btn-check' name='bookingTime' id='slot").append(slotId).append("' value='").append(slot).append("' ").append(disabled ? "disabled" : "").append(" required><label class='btn ").append(disabled ? "btn-secondary" : "btn-outline-warning").append(" w-100' for='slot").append(slotId).append("'>").append(slot).append("</label></div>");
             }
-
             response.getWriter().write(html.toString());
             return;
         }
 
-        // ================= HỦY BOOKING =================
-        User user = (User) session.getAttribute("USER");
-
-        BookingDAO bookingDAO = new BookingDAO();
-
-        CarDAO carDAO = new CarDAO();
-        if ("delete".equals(action)) {
-
-            String id = request.getParameter("id");
-
-            if (id != null && !id.trim().isEmpty()) {
-
-                bookingDAO.cancelBooking(Integer.parseInt(id));
-
-                session.setAttribute(
-                        "MESSAGE",
-                        "Đã hủy lịch đặt thành công!"
-                );
-
-                response.sendRedirect("BookingServlet");
-                return;
+        // ĐOẠN ĐƯỢC CHỈNH SỬA LẠI THEO YÊU CẦU CỦA BẠN:
+        if ("pay".equals(action)) {
+            String idStr = request.getParameter("id");
+            try {
+                if (idStr != null && !idStr.isEmpty()) {
+                    int bookingId = Integer.parseInt(idStr);
+                    
+                    // Thực hiện gọi hàm cập nhật Database cũ của bạn
+                    bookingDAO.confirmPayment(bookingId);
+                    
+                    // Lưu thông báo thành công vào Session để mang qua trang index.jsp
+                    session.setAttribute("toastMessage", "Đã đặt lịch thành công!");
+                    
+                    // Chuyển hướng trực tiếp về trang index.jsp thay vì quay lại BookingServlet
+                    response.sendRedirect("index.jsp");
+                    return;
+                }
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
             }
-        }
-
-        // ================= LOAD TRANG BOOKING =================
-        LocalDate today = LocalDate.now();
-
-        int maxDays = 7;
-
-        if (user.getTierID() == 2) {
-            maxDays = 10;
-        } else if (user.getTierID() == 3) {
-            maxDays = 12;
-        } else if (user.getTierID() == 4) {
-            maxDays = 14;
-        }
-
-        request.setAttribute("MIN_DATE", today.toString());
-
-        request.setAttribute(
-                "MAX_DATE",
-                today.plusDays(maxDays).toString()
-        );
-
-        request.setAttribute(
-                "SERVICE",
-                request.getParameter("service") != null
-                        ? request.getParameter("service")
-                        : "Basic"
-        );
-
-        request.setAttribute(
-                "CAR_LIST",
-                carDAO.getCars(user.getCustID())
-        );
-
-        request.setAttribute(
-                "BOOKING_LIST",
-                bookingDAO.getBookingsByCustomer(user.getCustID())
-        );
-
-        request.getRequestDispatcher("Booking.jsp")
-                .forward(request, response);
-    }
-
-    @Override
-    protected void doPost(HttpServletRequest request,
-            HttpServletResponse response)
-            throws ServletException, IOException {
-
-        request.setCharacterEncoding("UTF-8");
-
-        HttpSession session = request.getSession(false);
-
-        if (session == null
-                || session.getAttribute("USER") == null) {
-
-            response.sendRedirect("login_page.jsp");
+            // Đề phòng trường hợp lỗi hoặc không tìm thấy ID, chuyển về trang chủ an toàn
+            response.sendRedirect("index.jsp");
             return;
         }
 
+        LocalDate today = LocalDate.now();
+        int maxDays = (user.getTierID() == 2) ? 10 : (user.getTierID() == 3) ? 12 : (user.getTierID() == 4) ? 14 : 7;
+        request.setAttribute("MIN_DATE", today.toString());
+        request.setAttribute("MAX_DATE", today.plusDays(maxDays).toString());
+        request.setAttribute("SERVICE", request.getParameter("service") != null ? request.getParameter("service") : "Basic");
+        request.setAttribute("CAR_LIST", carDAO.getCars(user.getCustID()));
+        request.setAttribute("BOOKING_LIST", bookingDAO.getBookingsByCustomer(user.getCustID()));
+        request.setAttribute("VOUCHER_LIST", bookingDAO.getAllActiveVouchers());
+        request.getRequestDispatcher("Booking.jsp").forward(request, response);
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        request.setCharacterEncoding("UTF-8");
+        HttpSession session = request.getSession(false);
         User user = (User) session.getAttribute("USER");
+        BookingDAO dao = new BookingDAO();
 
         try {
-
             Booking booking = new Booking();
-
             booking.setCustomerID(user.getCustID());
-
-            booking.setLicensePlate(
-                    request.getParameter("licensePlate"));
-
-            booking.setServiceType(
-                    request.getParameter("serviceType"));
-
-            booking.setBookingDate(
-                    request.getParameter("bookingDate"));
-
-            booking.setBookingTime(
-                    request.getParameter("bookingTime"));
-
-            // ================= CHẶN ĐẶT GIỜ ĐÃ QUA =================
-            LocalDate bookingDate
-                    = LocalDate.parse(booking.getBookingDate());
-
-            if (bookingDate.equals(LocalDate.now())) {
-
-                String startTime
-                        = booking.getBookingTime()
-                                .split("-")[0]
-                                .trim();
-
-                LocalTime slotStart
-                        = LocalTime.parse(startTime);
-
-                if (slotStart.isBefore(LocalTime.now())) {
-
-                    session.setAttribute(
-                            "ERROR",
-                            "Không thể đặt lịch vào khung giờ đã qua."
-                    );
-
-                    response.sendRedirect("BookingServlet");
-                    return;
-                }
+            booking.setLicensePlate(request.getParameter("licensePlate"));
+            booking.setServiceType(request.getParameter("serviceType"));
+            booking.setBookingDate(request.getParameter("bookingDate"));
+            booking.setBookingTime(request.getParameter("bookingTime"));
+            
+            String vId = request.getParameter("voucherID");
+            double discount = 0;
+            if (vId != null && !vId.isEmpty()) {
+                booking.setVoucherID(Integer.parseInt(vId));
+                discount = dao.getDiscountPercent(Integer.parseInt(vId));
             }
 
-            booking.setStatus("Pending");
-
-            // ================= GIÁ DỊCH VỤ =================
-            String service = booking.getServiceType();
-
-            if (service != null) {
-
-                if (service.equalsIgnoreCase("Basic")) {
-                    booking.setPrice(99000);
-                } else if (service.equalsIgnoreCase("Premium")) {
-                    booking.setPrice(149000);
-                } else if (service.equalsIgnoreCase("Detail")) {
-                    booking.setPrice(299000);
-                } else {
-                    booking.setPrice(0);
-                }
-            }
-
+            double price = booking.getServiceType().equalsIgnoreCase("Premium") ? 149000 : 
+                           booking.getServiceType().equalsIgnoreCase("Detail") ? 299000 : 99000;
+            booking.setPrice(price - (price * discount / 100));
+            
+            // LƯU TẠM THỜI VỚI TRẠNG THÁI PAYMENTPENDING
+            booking.setStatus("PaymentPending"); 
             booking.setPaymentStatus("Unpaid");
 
-            BookingDAO dao = new BookingDAO();
-
-            if (dao.addBooking(booking)) {
-
-                session.setAttribute(
-                        "MESSAGE",
-                        "Đặt lịch thành công!"
-                );
-
-                response.sendRedirect("BookingServlet");
-
+            int newId = dao.addBookingAndGetId(booking);
+            if (newId > 0) {
+                response.sendRedirect("payment.jsp?id=" + newId + "&service=" + booking.getServiceType() + "&price=" + booking.getPrice());
             } else {
-
-                session.setAttribute(
-                        "ERROR",
-                        "Lỗi lưu Database."
-                );
-
+                session.setAttribute("ERROR", "Lỗi lưu Database.");
                 response.sendRedirect("BookingServlet");
             }
-
         } catch (Exception e) {
-
             e.printStackTrace();
-
-            session.setAttribute(
-                    "ERROR",
-                    "Đã xảy ra lỗi hệ thống: "
-                    + e.getMessage()
-            );
-
             response.sendRedirect("BookingServlet");
         }
     }
