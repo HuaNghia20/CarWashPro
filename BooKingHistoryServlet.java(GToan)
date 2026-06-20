@@ -1,0 +1,103 @@
+package controller;
+
+import dao.BookingDAO;
+import dao.UserDAO;
+import java.io.IOException;
+import java.util.ArrayList;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.*;
+import model.Booking;
+import model.User;
+
+@WebServlet("/BookingHistoryServlet")
+public class BookingHistoryServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest request,
+            HttpServletResponse response)
+            throws ServletException, IOException {
+
+        // 1. Kiểm tra bảo mật đăng nhập hệ thống
+        HttpSession session = request.getSession(false);
+
+        if (session == null || session.getAttribute("USER") == null) {
+            response.sendRedirect("login_page.jsp");
+            return;
+        }
+
+        User user = (User) session.getAttribute("USER");
+        BookingDAO dao = new BookingDAO();
+        
+        // Tự động quét và cập nhật các lịch hẹn đã quá giờ
+        dao.updateExpiredBookings();
+        
+        // 2. Xử lý các hành động (Actions) từ giao diện gửi lên
+        String action = request.getParameter("action");
+
+       // --- HÀNH ĐỘNG HỦY LỊCH ĐẶT ---
+        if ("cancel".equals(action)) {
+            try {
+                int bookingID = Integer.parseInt(request.getParameter("id"));
+                
+                // Gọi hàm hủy lịch kèm xử lý kiểm tra hoàn tiền 
+                String resultMessage = dao.cancelAndRefundBooking(bookingID, user.getCustID());
+                
+                // --- BẮT ĐẦU ĐOẠN CODE BẠN THÊM VÀO ---
+                // Đẩy thông báo ra màn hình
+                session.setAttribute("MESSAGE", resultMessage);
+
+                // Cập nhật lại session USER để giao diện hiển thị đúng số dư ví mới sau khi được hoàn tiền
+                dao.updateExpiredBookings(); 
+                UserDAO userDAO = new UserDAO();
+                User updatedUser = userDAO.getUser(user.getEmail()); // Lấy lại user mới từ DB
+                session.setAttribute("USER", updatedUser);
+                // --- KẾT THÚC ĐOẠN CODE ---
+                
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            }
+            response.sendRedirect("BookingHistoryServlet");
+            return;
+        }
+
+        // --- HÀNH ĐỘNG CHECK-IN TẠI QUẦY (Mới thêm) ---
+        if ("checkin".equals(action)) {
+            try {
+                int bookingID = Integer.parseInt(request.getParameter("id"));
+                dao.checkInBooking(bookingID); // Hàm cập nhật trạng thái Checked-in
+            } catch (NumberFormatException e) {
+                e.printStackTrace();
+            }
+            response.sendRedirect("BookingHistoryServlet");
+            return;
+        }
+
+        // 3. Xử lý truy vấn dữ liệu và bộ lọc tìm kiếm theo ngày (Mới thêm)
+        String startDate = request.getParameter("startDate");
+        String endDate = request.getParameter("endDate");
+        
+        ArrayList<Booking> bookingList;
+
+        // Nếu người dùng chọn đủ khoảng ngày "Từ ngày" và "Đến ngày"
+        if (startDate != null && !startDate.trim().isEmpty() 
+                && endDate != null && !endDate.trim().isEmpty()) {
+            
+            // Gọi hàm tìm kiếm nằm giữa 2 ngày cụ thể từ DAO
+            bookingList = dao.getBookingsByCustomerAndDate(user.getCustID(), startDate.trim(), endDate.trim());
+            
+            // Đẩy ngược ngày lên request để giữ lại giá trị trên thanh input sau khi refresh
+            request.setAttribute("START_DATE", startDate);
+            request.setAttribute("END_DATE", endDate);
+        } else {
+            // Mặc định tải toàn bộ lịch sử nếu không lọc ngày
+            bookingList = dao.getBookingsByCustomer(user.getCustID());
+        }
+
+        // Đẩy danh sách kết quả sang file hiển thị
+        request.setAttribute("BOOKING_LIST", bookingList);
+
+        request.getRequestDispatcher("BookingHistory.jsp")
+                .forward(request, response);
+    }
+}
