@@ -125,12 +125,14 @@ public class BookingDAO {
     // ==========================================
     // 4. HỦY BOOKING VÀ TỰ ĐỘNG HOÀN TIỀN / TẶNG VOUCHER (THEO ẢNH LOGIC)
     // ==========================================
+  // ==========================================
+    // 4. HỦY BOOKING VÀ TỰ ĐỘNG HOÀN TIỀN / TẶNG VOUCHER
+    // ==========================================
     public String cancelAndRefundBooking(int bookingID, int custID) {
-        // SQL: Tính số phút chênh lệch từ THỜI ĐIỂM HỦY HIỆN TẠI (GETDATE()) tới GIỜ HẸN RỬA XE
-       // ĐOẠN CODE CŨ ĐANG BỊ LỖI:
-            String sqlCheck = "SELECT CustomerID, Price, PaymentStatus, BookingStatus, "
-                + "DATEDIFF(MINUTE, GETDATE(), CAST(BookingDate AS DATETIME) + CAST(BookingTime AS DATETIME)) AS MinutesLeft "
-                + "FROM Bookings WHERE BookingID = ?";
+        // Đã sửa lỗi SQL: Dùng LEFT(BookingTime, 5) để lấy giờ bắt đầu trước khi ép kiểu
+        String sqlCheck = "SELECT CustomerID, Price, PaymentStatus, BookingStatus, "
+            + "DATEDIFF(MINUTE, GETDATE(), CAST(CONCAT(CAST(BookingDate AS DATE), ' ', LEFT(BookingTime, 5)) AS DATETIME)) AS MinutesLeft "
+            + "FROM Bookings WHERE BookingID = ?";
         
         String sqlCancel  = "UPDATE Bookings SET BookingStatus='Cancelled', PaymentStatus=? WHERE BookingID=? AND CustomerID=?";
         String sqlRefund  = "UPDATE Customers SET Wallet = Wallet + ? WHERE CustomerID = ?";
@@ -143,7 +145,7 @@ public class BookingDAO {
             
             cn.setAutoCommit(false); // Kích hoạt Transaction an toàn dữ liệu
 
-            int ownerID = -1, t = 0; // t là số phút còn lại tới giờ hẹn (MinutesLeft)
+            int ownerID = -1, t = 0; 
             double price = 0;
             String paymentStatus = "", bookingStatus = "";
 
@@ -168,7 +170,7 @@ public class BookingDAO {
                 cn.rollback(); return "Lịch đặt này đã được xử lý hoặc đã hoàn thành, không thể hủy.";
             }
 
-            // --- Áp dụng cây điều kiện phân hoạch theo ảnh quy định ---
+            // --- Áp dụng cây điều kiện phân hoạch hoàn tiền ---
             double refundPercent = 0.0;
             boolean giveVoucher = false;
 
@@ -208,7 +210,7 @@ public class BookingDAO {
                 }
             }
 
-            // 3. Khởi tạo và cấp tặng voucher giảm giá 10% (nếu rơi vào khung ưu đãi)
+            // 3. Khởi tạo và cấp tặng voucher giảm giá 10%
             String voucherCode = null;
             if (giveVoucher) {
                 voucherCode = "SAVE10-" + bookingID + "-" + (System.currentTimeMillis() % 100000);
@@ -216,20 +218,20 @@ public class BookingDAO {
                     st.setInt(1, ownerID);
                     st.setString(2, voucherCode);
                     st.setInt(3, 10);
-                    st.setTimestamp(4, new java.sql.Timestamp(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000)); // Hạn 30 ngày
+                    st.setTimestamp(4, new java.sql.Timestamp(System.currentTimeMillis() + 30L * 24 * 60 * 60 * 1000));
                     st.executeUpdate();
                 }
             }
 
-            cn.commit(); // Ghi nhận thay đổi thành công đồng bộ xuống DB
+            cn.commit(); 
 
-            // Xử lý thông điệp gửi về Client hiển thị lên màn hình giao diện
+            // Trả về thông điệp
             int pct = (int) (refundPercent * 100);
             if (giveVoucher) {
-                return "Đã hủy lịch. Do thời gian tới giờ hẹn còn dưới 20 phút nên không hoàn tiền, hệ thống tặng bạn mã giảm 10%: " + voucherCode;
+                return "Đã hủy lịch. Do thời gian tới giờ hẹn còn dưới 20 phút nên không hoàn tiền, tặng bạn mã giảm 10%: " + voucherCode;
             }
             if (refundAmount > 0) {
-                return "Đã hủy lịch thành công. Hệ thống đã hoàn lại " + pct + "% tiền (" + String.format("%,.0f", refundAmount) + " VNĐ) vào ví của bạn!";
+                return "Đã hủy lịch. Hệ thống đã hoàn lại " + pct + "% tiền (" + String.format("%,.0f", refundAmount) + " VNĐ) vào ví của bạn!";
             }
             if (isPaid) {
                 return "Đã hủy lịch thành công. Theo quy định khung giờ này mức hoàn tiền là 0%.";
