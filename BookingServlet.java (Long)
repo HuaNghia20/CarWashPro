@@ -106,7 +106,7 @@ public class BookingServlet extends HttpServlet {
         // ================= HỦY / XÓA BOOKING =================
         User user = (User) session.getAttribute("USER");
 
-       if ("delete".equals(action)) {
+        if ("delete".equals(action)) {
             String id = request.getParameter("id");
             if (id != null && !id.trim().isEmpty()) {
                 String resultMessage = bookingDAO.cancelAndRefundBooking(Integer.parseInt(id), user.getCustID());
@@ -197,8 +197,14 @@ public class BookingServlet extends HttpServlet {
                 // Lấy ra danh sách mới nhất để định danh ID vừa tạo (phục vụ thanh toán QR)
                 List<Booking> latestList = dao.getBookingsByCustomer(user.getCustID());
                 int generatedID = 0;
+                
+                // === ĐÃ FIX LỖI TẠI ĐÂY: Quét tìm ID lớn nhất thay vì lấy phần tử đầu tiên ===
                 if (latestList != null && !latestList.isEmpty()) {
-                    generatedID = latestList.get(0).getBookingID(); // Lịch mới nhất xếp đầu tiên (DESC)
+                    for (Booking b : latestList) {
+                        if (b.getBookingID() > generatedID) {
+                            generatedID = b.getBookingID();
+                        }
+                    }
                 }
 
                 // Đẩy thông tin biên lai trực tiếp sang trang hóa đơn payment.jsp
