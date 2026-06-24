@@ -1,0 +1,82 @@
+package dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+import utils.DBContext;
+
+public class ReportDAO {
+
+    // 1. LẤY TỔNG QUAN (Tổng khách, Tổng đơn, Tổng doanh thu năm hiện tại)
+    // Lưu ý: Các hàm này dùng chung điều kiện lọc để không bị lệch số liệu
+    public Map<String, Object> getGeneralStats() {
+        Map<String, Object> stats = new HashMap<>();
+        // Lọc theo PaymentStatus = 'Paid' và năm hiện tại để khớp với biểu đồ
+        String sql = "SELECT COUNT(DISTINCT CustomerID) as TotalCust, " +
+                     "COUNT(BookingID) as TotalBookings, " +
+                     "SUM(Price) as TotalRevenue " +
+                     "FROM Bookings " +
+                     "WHERE PaymentStatus = 'Paid' AND YEAR(BookingDate) = YEAR(GETDATE())";
+        
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql);
+             ResultSet rs = st.executeQuery()) {
+            if (rs.next()) {
+                stats.put("totalCust", rs.getInt("TotalCust"));
+                stats.put("totalBookings", rs.getInt("TotalBookings"));
+                stats.put("totalRevenue", rs.getDouble("TotalRevenue"));
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return stats;
+    }
+
+    // 2. TỔNG DOANH THU (Khớp với biểu đồ)
+    public double getTotalRevenue() {
+        double total = 0;
+        String sql = "SELECT SUM(Price) FROM Bookings WHERE PaymentStatus = 'Paid' AND YEAR(BookingDate) = YEAR(GETDATE())";
+        
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql);
+             ResultSet rs = st.executeQuery()) {
+            if (rs.next()) {
+                total = rs.getDouble(1); 
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return total;
+    }
+
+    // 3. TỔNG SỐ ĐƠN HÀNG (Khớp với biểu đồ)
+    public int getTotalBookings() {
+        int count = 0;
+        String sql = "SELECT COUNT(BookingID) FROM Bookings WHERE PaymentStatus = 'Paid' AND YEAR(BookingDate) = YEAR(GETDATE())";
+        
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql);
+             ResultSet rs = st.executeQuery()) {
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return count;
+    }
+
+    // 4. DOANH THU THEO TỪNG THÁNG (Dùng để vẽ biểu đồ)
+    public Map<Integer, Double> getRevenueByMonth() {
+        Map<Integer, Double> revenueMap = new TreeMap<>();
+        String sql = "SELECT MONTH(BookingDate) as Month, SUM(Price) as Rev " +
+                     "FROM Bookings WHERE PaymentStatus = 'Paid' AND YEAR(BookingDate) = YEAR(GETDATE()) " +
+                     "GROUP BY MONTH(BookingDate)";
+        
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql);
+             ResultSet rs = st.executeQuery()) {
+            while (rs.next()) {
+                revenueMap.put(rs.getInt("Month"), rs.getDouble("Rev"));
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return revenueMap;
+    }
+}
