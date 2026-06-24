@@ -1,0 +1,82 @@
+package controller;
+
+import dao.BookingDAO;
+import dao.ReportDAO;
+import java.io.IOException;
+import java.util.ArrayList;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import model.Booking;
+import model.User;
+
+@WebServlet(name = "AdminServlet", urlPatterns = {"/AdminServlet"})
+public class AdminServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        
+        HttpSession session = request.getSession(false);
+        
+        // 1. CHẶN PHÂN QUYỀN
+        if (session == null || session.getAttribute("USER") == null) {
+            response.sendRedirect("login_page.jsp");
+            return;
+        }
+        
+        User user = (User) session.getAttribute("USER");
+        if (!"ADMIN".equalsIgnoreCase(user.getRole())) {
+            response.sendRedirect("index.jsp");
+            return;
+        }
+
+        // Khởi tạo các DAO một lần duy nhất
+        BookingDAO bookingDAO = new BookingDAO();
+        ReportDAO reportDAO = new ReportDAO();
+
+        // 2. XỬ LÝ ACTION
+        String action = request.getParameter("action");
+        if ("approve".equals(action)) {
+            String id = request.getParameter("id");
+            if (id != null) {
+                bookingDAO.updateBookingStatus(Integer.parseInt(id), "Completed");
+                // Chuyển hướng để xóa tham số action trên URL
+                response.sendRedirect("AdminServlet");
+                return;
+            }
+        }
+
+        // 3. TẢI DỮ LIỆU ĐỂ HIỂN THỊ LÊN DASHBOARD
+        ArrayList<Booking> allBookings = bookingDAO.getAllBookings(); 
+        
+        // Sử dụng ReportDAO để lấy số liệu tổng quát
+        double totalRevenue = reportDAO.getTotalRevenue();
+        int totalBookings = reportDAO.getTotalBookings();
+        
+        // Tính số lượng Pending từ danh sách allBookings
+        int pendingCount = 0;
+        for (Booking b : allBookings) {
+            if ("Pending".equalsIgnoreCase(b.getStatus())) {
+                pendingCount++;
+            }
+        }
+
+        // Đẩy dữ liệu sang trang JSP
+        request.setAttribute("ALL_BOOKINGS", allBookings);
+        request.setAttribute("TOTAL_BOOKINGS", totalBookings);
+        request.setAttribute("TOTAL_REVENUE", totalRevenue);
+        request.setAttribute("PENDING_COUNT", pendingCount);
+
+        request.getRequestDispatcher("admin_dashboard.jsp").forward(request, response);
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        doGet(request, response);
+    }
+}
