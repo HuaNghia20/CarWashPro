@@ -1,0 +1,32 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package controller;
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import dao.ReportDAO; // BẮT BUỘC PHẢI CÓ DÒNG NÀY
+/**
+ *
+ * @author ASUS
+ */
+
+
+@WebServlet(name = "AdminReportsServlet", urlPatterns = {"/admin/reports"})
+public class AdminReportsServlet extends HttpServlet { 
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        ReportDAO rDao = new ReportDAO();
+        
+        // Gom dữ liệu
+        request.setAttribute("STATS", rDao.getGeneralStats());
+        request.setAttribute("REVENUE_DATA", rDao.getRevenueByMonth());
+        
+        request.getRequestDispatcher("../admin_reports.jsp").forward(request, response);
+    }
+}
