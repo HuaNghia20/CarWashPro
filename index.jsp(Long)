@@ -1,0 +1,312 @@
+<%@page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Trang Chủ - CarWash Pro</title>
+
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link class="ui-theme-fab" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+        <style>
+            /* BẢNG MÀU ĐEN - VÀNG (BLACK & YELLOW THEME) */
+            :root {
+                --bg-main: #0a0b0d;
+                --bg-card: #14161a;
+                --border-color: #2a2d35;
+                --yellow-accent: #ffcc00;
+                --yellow-glow: rgba(255, 204, 0, 0.4);
+                --text-main: #e0e4e8;
+                --text-muted: #8a919e;
+            }
+
+            body {
+                background-color: var(--bg-main);
+                color: var(--text-main);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin-bottom: 50px;
+            }
+
+            /* --- NAVBAR --- */
+            .navbar-custom {
+                background-color: #0d0f12;
+                border-bottom: 1px solid var(--border-color);
+                padding: 15px 0;
+            }
+            .navbar-brand {
+                color: var(--yellow-accent) !important;
+                font-weight: 900;
+                font-size: 1.5rem;
+                text-shadow: 0 0 15px var(--yellow-glow);
+                letter-spacing: 1px;
+            }
+            .nav-link {
+                color: var(--text-main) !important;
+                font-weight: 500;
+                margin-right: 15px;
+                transition: 0.3s;
+            }
+            .nav-link:hover, .nav-link.active {
+                color: var(--yellow-accent) !important;
+                text-shadow: 0 0 8px var(--yellow-glow);
+            }
+            .btn-logout {
+                background-color: transparent;
+                color: #ff4d4d;
+                border: 1px solid #ff4d4d;
+                border-radius: 8px;
+                transition: 0.3s;
+            }
+            .btn-logout:hover {
+                background-color: #ff4d4d;
+                color: #fff;
+                box-shadow: 0 0 10px rgba(255, 77, 77, 0.5);
+            }
+
+            /* --- CARDS (KHỐI NỘI DUNG) --- */
+            .card-custom {
+                background-color: var(--bg-card);
+                border: 1px solid var(--border-color);
+                border-radius: 12px;
+                padding: 25px;
+                margin-bottom: 25px;
+                box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+                transition: transform 0.3s, box-shadow 0.3s;
+            }
+            .card-custom:hover {
+                border-color: #3a3d45;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            }
+
+            /* --- MÀU CHỮ & NHẤN NHÁ --- */
+            .text-yellow {
+                color: var(--yellow-accent);
+            }
+            .text-glow {
+                text-shadow: 0 0 10px var(--yellow-glow);
+            }
+
+            /* --- HIỆU ỨNG PHÁT SÁNG CHO HUY HIỆU SYSTEM RANK --- */
+            .badge-tier {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 4px 14px;
+                border-radius: 20px;
+                font-weight: 800;
+                font-size: 0.85rem;
+                border: 1px solid;
+                text-transform: uppercase;
+                margin-left: 8px;
+                vertical-align: middle;
+            }
+
+            .rank-1-cop {
+                color: #ff923d;
+                border-color: rgba(255, 146, 61, 0.5);
+                background: rgba(255, 146, 61, 0.08);
+                box-shadow: 0 0 12px rgba(255, 146, 61, 0.3);
+            }
+
+            .rank-2-sil {
+                color: #cbd5e1;
+                border-color: rgba(203, 213, 225, 0.5);
+                background: rgba(203, 213, 225, 0.08);
+                box-shadow: 0 0 12px rgba(203, 213, 225, 0.3);
+            }
+
+            .rank-3-gold {
+                color: #ffcc00;
+                border-color: rgba(255, 204, 0, 0.6);
+                background: rgba(255, 204, 0, 0.1);
+                box-shadow: 0 0 15px var(--yellow-glow);
+            }
+
+            .service-card {
+
+                transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+            }
+
+            .service-card i {
+                transition: transform 0.3s ease;
+            }
+
+            .service-card .package-btn {
+                transition: background-color 0.2s ease;
+            }
+
+
+            .service-card:hover {
+                transform: translateY(-8px);
+                border-color: var(--yellow-accent) !important;
+                box-shadow: 0 12px 25px rgba(0, 0, 0, 0.6) !important;
+            }
+
+            .service-card:hover i {
+                transform: scale(1.1);
+            }
+
+            .service-card:hover .package-btn {
+                background-color: #ffe033;
+            }
+            /* --- CLASS CỐ ĐỊNH CHO NÚT TÌM KIẾM/CHỌN GÓI --- */
+            .btn-search {
+                background-color: var(--yellow-accent);
+                color: #000 !important;
+                font-weight: bold;
+                border: none;
+                padding: 12px 30px;
+                border-radius: 8px;
+                box-shadow: 0 0 15px var(--yellow-glow);
+                transition: 0.3s;
+                text-decoration: none;
+                display: block; /* Thêm để thẻ a full width */
+            }
+            .btn-search:hover {
+                background-color: #ffda33;
+                box-shadow: 0 0 25px var(--yellow-glow);
+                transform: scale(1.02);
+            }
+
+            /* Định dạng riêng cho giá tiền */
+            .price-tag {
+                font-size: 1.4rem;
+                letter-spacing: 0.5px;
+            }
+        </style>
+    </head>
+    <body>
+
+      <nav class="navbar navbar-expand-lg navbar-custom mb-5">
+    <div class="container">
+        <a class="navbar-brand" href="index.jsp">
+            <i class="fa-solid fa-car me-2"></i>CarWash Pro
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon" style="background-color: var(--yellow-accent);"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav me-4 align-items-center">
+                <li class="nav-item"><a class="nav-link active" href="index.jsp">Trang Chủ</a></li>
+
+                <% if (session.getAttribute("USER") != null) { %>
+                    <li class="nav-item"><a class="nav-link" href="BookingHistoryServlet">Lịch sử booking</a></li>
+                    <li class="nav-item"><a class="nav-link" href="profile.jsp">Hồ Sơ</a></li>
+                    <li class="nav-item"><a class="nav-link" href="cars">Quản Lý Xe</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link text-yellow fw-bold" href="redeem">
+                            <i class="fa-solid fa-gift me-1"></i>Đổi Thưởng
+                        </a>
+                    </li>
+
+                    <% 
+                        model.User u = (model.User) session.getAttribute("USER");
+                        if (u != null && "ADMIN".equals(u.getRole())) { 
+                    %>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-danger fw-bold" href="#" data-bs-toggle="dropdown">
+                            <i class="fa-solid fa-shield-halved me-1"></i>Admin Task
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" style="background-color: #14161a;">
+                            <li><a class="dropdown-item" href="admin/tiers">Cấu hình Hạng</a></li>
+                            <li><a class="dropdown-item" href="admin/promotions">Gửi Khuyến Mãi</a></li>
+                            <a class="dropdown-item" href="${pageContext.request.contextPath}/admin/reports">Báo Cáo Thống Kê</a>
+                        </ul>
+                    </li>
+                    <% } %>
+                <% } %>
+            </ul>
+
+            <% if (session.getAttribute("USER") != null) { %>
+                <a href="logout" class="btn btn-logout px-4 fw-bold text-decoration-none">Đăng Xuất</a>
+            <% } else { %>
+                <div class="d-flex gap-2">
+                    <a href="login_page.jsp" class="btn btn-search px-4 fw-bold">Đăng Nhập</a>
+                    <a href="register_page.jsp" class="btn btn-search px-4 fw-bold">Đăng Ký</a>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</nav>
+             
+
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card-custom h-100 d-flex flex-column justify-content-center text-center">
+                        <% if (session.getAttribute("USER") != null) {
+                                    model.User currentUser = (model.User) session.getAttribute("USER");
+                        %>
+                        <h1 class="fw-bold mb-3">Chào mừng trở lại, <span class="text-yellow text-glow"><%= currentUser.getFullname()%>!</span></h1>
+                        <p class="text-light fs-5 mb-0" style="opacity: 0.95; line-height: 1.7; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+                            Bạn đang truy cập hệ thống CarWash Pro với tư cách là thành viên 
+                            <span class="badge-tier <%= (currentUser.getTierID() == 1) ? "rank-1-cop" : ((currentUser.getTierID() == 2) ? "rank-2-sil" : "rank-3-gold")%>">
+                                <i class="fa-solid fa-crown me-1"></i>
+                                <%= (currentUser.getTierID() == 1) ? "Member" : ((currentUser.getTierID() == 2) ? "SILVER" : "GOLD")%>
+                            </span>. 
+                            <br>Trải nghiệm chăm sóc xế yêu thông minh, tiện lợi và hoàn toàn tự động.
+                        </p>
+
+                        
+                        <% } else { %>
+                        <h1 class="fw-bold mb-3">Chào mừng bạn đến với <span class="text-yellow text-glow">CarWash Pro!</span></h1>
+                        <p class="text-light fs-5 mb-0" style="opacity: 0.95; line-height: 1.7; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+                            Hệ thống đặt lịch chăm sóc và làm sạch phương tiện chuyên nghiệp hàng đầu.
+                            <br>Hãy <a href="login_page.jsp" class="text-yellow fw-bold" style="text-decoration: none;">Đăng nhập</a> hoặc <a href="register_page.jsp" class="text-yellow fw-bold" style="text-decoration: none;">Đăng ký</a> để bắt đầu trải nghiệm dịch vụ của chúng tôi!
+                        </p>
+                        <% }%>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+
+                <div class="col-md-4 mb-4">
+                    <div class="card-custom h-100 d-flex flex-column align-items-center text-center p-4">
+                        <i class="fa-solid fa-shower text-yellow mb-3" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(255,204,0,0.4));"></i>
+                        <h3 class="fw-bold text-yellow text-glow mb-1">Rửa Xe Cơ Bản</h3>
+                        <h4 class="fw-bold text-yellow price-tag mb-3">99.000 ₫</h4>
+
+                        <p class="text-light flex-grow-1" style="opacity: 0.85; line-height: 1.6;">Làm sạch bề mặt ngoài bằng bọt tuyết, xịt khô .</p>
+                        <p class="text-light mt-1 mb-0" style="opacity: 0.6; font-size: 0.9rem; font-style: italic;"><i class="fa-regular fa-clock me-1"></i>~10 phút</p>
+
+                        <a href="BookingServlet?service=Basic" class="btn btn-search w-100 mt-3" style="border-radius: 12px; padding: 10px;">Chọn Gói Này</a>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                    <div class="card-custom h-100 d-flex flex-column align-items-center text-center p-4" style="border-color: var(--yellow-accent); box-shadow: 0 10px 25px rgba(255,204,0,0.15);">
+                        <i class="fa-solid fa-spray-can-sparkles text-yellow mb-3" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(255,204,0,0.4));"></i>
+                        <h3 class="fw-bold text-yellow text-glow mb-1">Nâng Cao</h3>
+                        <h4 class="fw-bold text-yellow price-tag mb-3">149.000 ₫</h4>
+
+                        <p class="text-light flex-grow-1" style="opacity: 0.85; line-height: 1.6;">Bao gồm gói Cơ Bản, cộng thêm hút bụi toàn bộ nội thất, lau kính và khử mùi diệt khuẩn.</p>
+                        <p class="text-light mt-1 mb-0" style="opacity: 0.6; font-size: 0.9rem; font-style: italic;"><i class="fa-regular fa-clock me-1"></i>~20 phút</p>
+
+                        <a href="BookingServlet?service=Premium" class="btn btn-search w-100 mt-3" style="border-radius: 12px; padding: 10px;">Chọn Gói Này</a>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                    <div class="card-custom h-100 d-flex flex-column align-items-center text-center p-4" style="border-color: var(--yellow-accent); box-shadow: 0 10px 25px rgba(255,204,0,0.15);">
+                        <i class="fa-solid fa-wand-magic-sparkles text-yellow mb-3" style="font-size: 3rem; filter: drop-shadow(0 0 10px rgba(255,204,0,0.4));"></i>
+                        <h3 class="fw-bold text-yellow text-glow mb-1">Chi Tiết</h3>
+                        <h4 class="fw-bold text-yellow price-tag mb-3">299.000 ₫</h4>
+
+                        <p class="text-light flex-grow-1" style="opacity: 0.85; line-height: 1.6;">Chăm sóc toàn diện: Vệ sinh khoang máy, bảo dưỡng da nội thất và đánh bóng sơn chuyên sâu.</p>
+                        <p class="text-light mt-1 mb-0" style="opacity: 0.6; font-size: 0.9rem; font-style: italic;"><i class="fa-regular fa-clock me-1"></i>~30 phút</p>
+
+                        <a href="BookingServlet?service=Detail" class="btn btn-search w-100 mt-3" style="border-radius: 12px; padding: 10px;">Chọn Gói Này</a>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
+</html>
