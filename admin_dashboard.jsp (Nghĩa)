@@ -1,0 +1,286 @@
+<%@page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@page import="java.util.List, java.util.ArrayList"%>
+<%@page import="model.Booking, model.User, model.Promotion"%>
+<%
+    // 1. CHẶN BẢO MẬT CHUNG CHO TOÀN BỘ TRANG ADMIN
+    User user = (User) session.getAttribute("USER");
+    if(user == null || !"ADMIN".equalsIgnoreCase(user.getRole())){
+        response.sendRedirect(request.getContextPath() + "/login_page.jsp");
+        return;
+    }
+    
+    // 2. NHẬN BIẾT TAB ĐANG ACTIVE TỪ SERVLET TRUYỀN SANG
+    String activeTab = (String) request.getAttribute("ACTIVE_TAB");
+    if(activeTab == null) activeTab = "dashboard"; // Mặc định là dashboard
+    
+    String ctx = request.getContextPath();
+%>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Control Panel - CarWash Pro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* --- ĐỒNG BỘ CSS CHUNG --- */
+        :root {
+            --bg-main: #0a0b0d;
+            --bg-card: #14161a;
+            --border-color: #2a2d35;
+            --yellow-accent: #ffcc00;
+            --yellow-glow: rgba(255, 204, 0, 0.2);
+            --text-main: #e0e4e8;
+        }
+        body { background-color: var(--bg-main); color: var(--text-main); padding: 30px; font-family: 'Segoe UI', sans-serif;}
+        .admin-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; margin-bottom: 25px;}
+        
+        /* Sidebar */
+        .sidebar-link { color: var(--text-main); text-decoration: none; padding: 12px 15px; display: block; border-radius: 8px; transition: 0.3s; margin-bottom: 8px;}
+        .sidebar-link:hover, .sidebar-link.active { background: var(--yellow-accent); color: #000; font-weight: bold; }
+        
+        /* Khối thống kê của Dashboard */
+        .stat-card { border-left: 4px solid var(--yellow-accent); }
+        .stat-number { font-size: 1.8rem; font-weight: 800; color: var(--yellow-accent); }
+        
+        /* Bảng dữ liệu */
+        th { color: var(--yellow-accent) !important; text-transform: uppercase; font-size: 0.9rem;}
+        .table-dark { --bs-table-bg: var(--bg-card); }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        
+        <div class="col-md-2 mb-4">
+            <div class="admin-card" style="position: sticky; top: 20px;">
+                <h4 class="text-center mb-4" style="color: var(--yellow-accent); font-weight:900;">
+                    <i class="fa-solid fa-user-gear"></i> ADMIN PRO
+                </h4>
+                <hr style="border-color: var(--border-color)">
+                
+                <nav class="nav flex-column gap-2">
+                    <a class="sidebar-link <%= "dashboard".equals(activeTab) ? "active" : "" %>" href="<%= ctx %>/AdminServlet">
+                        <i class="fa-solid fa-chart-pie me-2"></i> Tổng quan
+                    </a>
+                    
+                    <a class="sidebar-link <%= "promotions".equals(activeTab) ? "active" : "" %>" href="<%= ctx %>/admin/promotions">
+                        <i class="fa-solid fa-tags me-2"></i> Quản lý Khuyến mãi
+                    </a>
+
+                    <a class="sidebar-link" href="<%= ctx %>/index.jsp">
+                        <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Ra trang web
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <div class="col-md-10">
+            
+            <%-- Thông báo chung --%>
+            <% 
+               String msg = (String) session.getAttribute("MESSAGE");
+               if (msg != null) {
+            %>
+               <div class="alert alert-success alert-dismissible fade show fw-bold">
+                   <i class="fa-solid fa-check-circle me-2"></i> <%= msg %>
+                   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+               </div>
+            <% 
+                   session.removeAttribute("MESSAGE");
+               } 
+            %>
+
+
+            <%--------------------------------------------------------------
+              PHẦN A: NẾU ĐANG Ở TAB DASHBOARD (Được gọi từ AdminServlet)
+            ---------------------------------------------------------------%>
+            <% if ("dashboard".equals(activeTab)) { 
+                ArrayList<Booking> allBookings = (ArrayList<Booking>) request.getAttribute("ALL_BOOKINGS");
+                Integer totalBookings = (Integer) request.getAttribute("TOTAL_BOOKINGS");
+                Double totalRevenue = (Double) request.getAttribute("TOTAL_REVENUE");
+                Integer pendingCount = (Integer) request.getAttribute("PENDING_COUNT");
+            %>
+            
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="admin-card stat-card">
+                            <div class="text-white fw-bold text-uppercase small">Tổng doanh thu hệ thống</div>
+                            <div class="stat-number mt-1"><%= String.format("%,.0f", totalRevenue != null ? totalRevenue : 0) %> VNĐ</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="admin-card stat-card">
+                            <div class="text-white fw-bold text-uppercase small">Tổng số lượt đặt lịch</div>
+                            <div class="stat-number mt-1"><%= totalBookings != null ? totalBookings : 0 %> Lượt</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="admin-card stat-card" style="border-left-color: orange;">
+                            <div class="text-warning fw-bold text-uppercase small">Lịch chờ duyệt (Pending)</div>
+                            <div class="stat-number mt-1 text-warning"><%= pendingCount != null ? pendingCount : 0 %> Lịch</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <h4 class="mb-4 fw-bold"><i class="fa-solid fa-list-check text-warning me-2"></i> Danh Sách Lịch Rửa Xe</h4>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover table-bordered align-middle">
+                            <thead>
+                                <tr><th>ID</th><th>Biển Số</th><th>Gói Rửa</th><th>Ngày Đặt</th><th>Giờ</th><th>Chi Phí</th><th>Trạng Thái</th><th>Hành Động</th></tr>
+                            </thead>
+                            <tbody>
+                            <% if(allBookings != null && !allBookings.isEmpty()){
+                                for(Booking b : allBookings){ %>
+                                <tr>
+                                    <td>#<%= b.getBookingID() %></td>
+                                    <td><span class="badge bg-light text-dark fw-bold"><%= b.getLicensePlate() %></span></td>
+                                    <td><%= b.getServiceType() %></td>
+                                    <td><%= b.getBookingDate() %></td>
+                                    <td><%= b.getBookingTime() %></td>
+                                    <td><%= String.format("%,.0f", b.getPrice()) %> đ</td>
+                                    <td>
+                                        <span class="fw-bold text-<%= "Pending".equalsIgnoreCase(b.getStatus()) ? "warning" : "success" %>">
+                                            <%= b.getStatus() %>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <% if("Pending".equalsIgnoreCase(b.getStatus())){ %>
+                                            <a href="<%= ctx %>/AdminServlet?action=approve&id=<%= b.getBookingID() %>" class="btn btn-warning btn-sm fw-bold">
+                                                <i class="fa-solid fa-check"></i> Duyệt
+                                            </a>
+                                        <% } else { %>
+                                            <span class="text-muted small">Đã xử lý</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% } } else { %>
+                                <tr><td colspan="8" class=\"text-center text-muted\">Chưa có lịch đặt nào.</td></tr>
+                            <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <% } %>
+
+
+            <%--------------------------------------------------------------
+              PHẦN B: NẾU ĐANG Ở TAB KHUYẾN MÃI (Được gọi từ AdminPromoServlet)
+            ---------------------------------------------------------------%>
+            <% if ("promotions".equals(activeTab)) { 
+                List<Promotion> promoList = (List<Promotion>) request.getAttribute("PROMO_LIST");
+                Promotion edit = (Promotion) request.getAttribute("EDIT_PROMO");
+                boolean editing = (edit != null);
+            %>
+                
+                <h4 class="mb-4 fw-bold text-white"><i class="fa-solid fa-tags me-2" style="color: var(--yellow-accent);"></i> Quản Lý Khuyến Mãi Hạng</h4>
+                
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="admin-card">
+                            <h5 class="fw-bold text-white mb-4"><%= editing ? "Chỉnh sửa #" + edit.getPromoID() : "Tạo khuyến mãi mới" %></h5>
+                            <form action="<%= ctx %>/admin/promotions" method="post">
+                                <input type="hidden" name="promoID" value="<%= editing ? edit.getPromoID() : 0%>">
+                                <input type="hidden" name="rewardID" value="<%= editing ? edit.getRewardID() : 0%>">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Tên khuyến mãi</label>
+                                    <input type="text" name="title" class="form-control bg-dark text-white border-secondary" value="<%= editing ? edit.getTitle() : ""%>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Mô tả chi tiết</label>
+                                    <input type="text" name="description" class="form-control bg-dark text-white border-secondary" value="<%= editing && edit.getDescription() != null ? edit.getDescription() : ""%>">
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col">
+                                        <label class="form-label text-muted small fw-bold">Giá đổi (Điểm)</label>
+                                        <input type="number" name="pointsRequired" class="form-control bg-dark text-white border-secondary" value="<%= editing ? edit.getPointsRequired() : 300%>" required>
+                                    </div>
+                                    <div class="col">
+                                        <label class="form-label text-muted small fw-bold">% Giảm giá</label>
+                                        <input type="number" name="discountPercent" class="form-control bg-dark text-white border-secondary" value="<%= editing ? edit.getDiscountPercent() : 10%>" required>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted small fw-bold">Áp dụng từ hạng</label>
+                                    <select name="minTierID" class="form-select bg-dark text-white border-secondary">
+                                        <% int t = editing ? edit.getMinTierID() : 2;%>
+                                        <option value="1" <%= t == 1 ? "selected" : ""%>>Đồng trở lên</option>
+                                        <option value="2" <%= t == 2 ? "selected" : ""%>>Bạc trở lên</option>
+                                        <option value="3" <%= t == 3 ? "selected" : ""%>>Vàng trở lên</option>
+                                        <option value="4" <%= t == 4 ? "selected" : ""%>>Bạch Kim</option>
+                                    </select>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col">
+                                        <label class="form-label text-muted small fw-bold">Từ ngày</label>
+                                        <input type="date" name="startDate" class="form-control bg-dark text-white border-secondary" value="<%= editing && edit.getStartDate() != null ? edit.getStartDate().toString() : ""%>">
+                                    </div>
+                                    <div class="col">
+                                        <label class="form-label text-muted small fw-bold">Đến ngày</label>
+                                        <input type="date" name="endDate" class="form-control bg-dark text-white border-secondary" value="<%= editing && edit.getEndDate() != null ? edit.getEndDate().toString() : ""%>">
+                                    </div>
+                                </div>
+                                <div class="form-check mb-4">
+                                    <input type="checkbox" name="isActive" class="form-check-input" id="act" <%= (!editing || edit.isIsActive()) ? "checked" : ""%>>
+                                    <label class="form-check-label text-white" for="act">Hiển thị ở trang Khách Hàng</label>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-warning fw-bold w-100 mb-2"><%= editing ? "Cập Nhật Lưu Trữ" : "Tạo Mới Khuyến Mãi" %></button>
+                                <% if (editing) {%>
+                                    <a href="<%= ctx%>/admin/promotions" class="btn btn-outline-light w-100">Hủy chỉnh sửa</a>
+                                <% } %>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="col-md-7">
+                        <div class="admin-card">
+                            <h5 class="fw-bold text-white mb-4">Danh sách hiện tại</h5>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover align-middle">
+                                    <thead>
+                                        <tr><th>ID</th><th>Tên Khuyến Mãi</th><th>Giá Điểm</th><th>Giảm</th><th>Từ Hạng</th><th>Trạng Thái</th><th></th></tr>
+                                    </thead>
+                                    <tbody>
+                                    <% if (promoList != null && !promoList.isEmpty()) {
+                                        for (Promotion p : promoList) { %>
+                                        <tr>
+                                            <td>#<%= p.getPromoID()%></td>
+                                            <td class="fw-bold"><%= p.getTitle()%></td>
+                                            <td class="text-warning fw-bold"><%= p.getPointsRequired()%></td>
+                                            <td><%= p.getDiscountPercent()%>%</td>
+                                            <td><span class="badge border border-secondary text-white"><%= p.getMinTierName()%></span></td>
+                                            <td>
+                                                <% if(p.isIsActive()) { %>
+                                                    <span class="badge bg-success">Đang bật</span>
+                                                <% } else { %>
+                                                    <span class="badge bg-secondary">Đã tắt</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <a href="<%= ctx%>/admin/promotions?action=edit&id=<%= p.getPromoID()%>" class="btn btn-sm btn-outline-warning">
+                                                    <i class="fa-solid fa-pen"></i> Sửa
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    <% } } else { %>
+                                        <tr><td colspan="7" class="text-center text-muted py-4">Chưa có dữ liệu khuyến mãi nào.</td></tr>
+                                    <% }%>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
