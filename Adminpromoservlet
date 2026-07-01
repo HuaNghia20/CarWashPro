@@ -1,0 +1,111 @@
+package controller;
+
+import dao.PromotionDAO;
+import java.io.IOException;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import model.Promotion;
+import model.User;
+
+/**
+ * Controller cho Task 2 - Quản lý khuyến mãi (chỉ Admin dùng).
+ *
+ * doGet : hiện danh sách + form. Nếu có ?action=edit&id= thì nạp form Sửa.
+ * doPost: nhận dữ liệu form -> promoID=0 là Tạo mới, promoID>0 là Cập nhật.
+ */
+@WebServlet(name = "AdminPromoServlet", urlPatterns = {"/admin/promotions"})
+public class AdminPromoServlet extends HttpServlet {
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        // 1) Kiểm tra đăng nhập và phải là ADMIN
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("USER") == null) {
+            response.sendRedirect(request.getContextPath() + "/login_page.jsp");
+            return;
+        }
+        User user = (User) session.getAttribute("USER");
+        if (!"ADMIN".equalsIgnoreCase(user.getRole())) {
+            response.sendRedirect(request.getContextPath() + "/index.jsp");
+            return;
+        }
+
+        PromotionDAO dao = new PromotionDAO();
+
+        // 2) Nếu bấm nút "Sửa" -> nạp 1 khuyến mãi ra form
+        String action = request.getParameter("action");
+        if ("edit".equals(action)) {
+            int id = Integer.parseInt(request.getParameter("id"));
+            request.setAttribute("EDIT_PROMO", dao.getPromotionById(id));
+        }
+
+        // 3) Luôn nạp danh sách khuyến mãi để hiển thị
+        request.setAttribute("PROMO_LIST", dao.getAllPromotions());
+        request.getRequestDispatcher("/admin_promotions.jsp").forward(request, response);
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        request.setCharacterEncoding("UTF-8");
+
+        // Kiểm tra đăng nhập admin
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("USER") == null) {
+            response.sendRedirect(request.getContextPath() + "/login_page.jsp");
+            return;
+        }
+        User user = (User) session.getAttribute("USER");
+        if (!"ADMIN".equalsIgnoreCase(user.getRole())) {
+            response.sendRedirect(request.getContextPath() + "/index.jsp");
+            return;
+        }
+
+        try {
+            // 1) Đọc dữ liệu từ form
+            int promoID  = Integer.parseInt(request.getParameter("promoID"));   // 0 = tạo mới
+            int rewardID = Integer.parseInt(request.getParameter("rewardID"));  // 0 nếu tạo mới
+
+            Promotion p = new Promotion();
+            p.setPromoID(promoID);
+            p.setRewardID(rewardID);
+            p.setTitle(request.getParameter("title"));
+            p.setDescription(request.getParameter("description"));
+            p.setDiscountPercent(Integer.parseInt(request.getParameter("discountPercent")));
+            p.setPointsRequired(Integer.parseInt(request.getParameter("pointsRequired")));
+            p.setMinTierID(Integer.parseInt(request.getParameter("minTierID")));
+            // checkbox: có tick thì khác null -> bật
+            p.setIsActive(request.getParameter("isActive") != null);
+
+            // Ngày: nếu để trống thì cho null
+            String sd = request.getParameter("startDate");
+            String ed = request.getParameter("endDate");
+            p.setStartDate((sd == null || sd.isEmpty()) ? null : java.sql.Date.valueOf(sd));
+            p.setEndDate((ed == null || ed.isEmpty()) ? null : java.sql.Date.valueOf(ed));
+
+            // 2) promoID = 0 -> Tạo mới ; > 0 -> Cập nhật
+            PromotionDAO dao = new PromotionDAO();
+            boolean ok;
+            if (promoID > 0) {
+                ok = dao.updatePromotion(p);
+                session.setAttribute("MESSAGE", ok ? "Đã cập nhật khuyến mãi." : "Cập nhật thất bại.");
+            } else {
+                ok = dao.createPromotion(p);
+                session.setAttribute("MESSAGE", ok ? "Đã tạo khuyến mãi và đẩy lên trang Đổi điểm." : "Tạo thất bại.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            session.setAttribute("MESSAGE", "Dữ liệu chưa hợp lệ, vui lòng kiểm tra lại.");
+        }
+
+        // 3) Quay lại trang danh sách
+        response.sendRedirect(request.getContextPath() + "/admin/promotions");
+    }
+}
