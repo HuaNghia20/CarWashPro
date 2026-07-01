@@ -35,48 +35,50 @@ public class ReportDAO {
 
     // 2. TỔNG DOANH THU (Khớp với biểu đồ)
     public double getTotalRevenue() {
-        double total = 0;
-        String sql = "SELECT SUM(Price) FROM Bookings WHERE PaymentStatus = 'Paid' AND YEAR(BookingDate) = YEAR(GETDATE())";
-        
-        try (Connection cn = DBContext.getConnection();
-             PreparedStatement st = cn.prepareStatement(sql);
-             ResultSet rs = st.executeQuery()) {
-            if (rs.next()) {
-                total = rs.getDouble(1); 
-            }
-        } catch (Exception e) { e.printStackTrace(); }
-        return total;
-    }
+    double total = 0;
+    // Lọc theo 'Completed'
+    String sql = "SELECT SUM(Price) FROM Bookings WHERE BookingStatus = 'Completed' AND YEAR(BookingDate) = YEAR(GETDATE())";
+    
+    try (Connection cn = DBContext.getConnection();
+         PreparedStatement st = cn.prepareStatement(sql);
+         ResultSet rs = st.executeQuery()) {
+        if (rs.next()) {
+            total = rs.getDouble(1);
+        }
+    } catch (Exception e) { e.printStackTrace(); }
+    return total;
+}
 
     // 3. TỔNG SỐ ĐƠN HÀNG (Khớp với biểu đồ)
     public int getTotalBookings() {
-        int count = 0;
-        String sql = "SELECT COUNT(BookingID) FROM Bookings WHERE PaymentStatus = 'Paid' AND YEAR(BookingDate) = YEAR(GETDATE())";
-        
-        try (Connection cn = DBContext.getConnection();
-             PreparedStatement st = cn.prepareStatement(sql);
-             ResultSet rs = st.executeQuery()) {
-            if (rs.next()) {
-                count = rs.getInt(1);
-            }
-        } catch (Exception e) { e.printStackTrace(); }
-        return count;
-    }
+    int count = 0;
+    // Lọc theo 'Completed'
+    String sql = "SELECT COUNT(BookingID) FROM Bookings WHERE BookingStatus = 'Completed' AND YEAR(BookingDate) = YEAR(GETDATE())";
+    
+    try (Connection cn = DBContext.getConnection();
+         PreparedStatement st = cn.prepareStatement(sql);
+         ResultSet rs = st.executeQuery()) {
+        if (rs.next()) {
+            count = rs.getInt(1);
+        }
+    } catch (Exception e) { e.printStackTrace(); }
+    return count;
+}
 
     // 4. DOANH THU THEO TỪNG THÁNG (Dùng để vẽ biểu đồ)
-    public Map<Integer, Double> getRevenueByMonth() {
-        Map<Integer, Double> revenueMap = new TreeMap<>();
-        String sql = "SELECT MONTH(BookingDate) as Month, SUM(Price) as Rev " +
-                     "FROM Bookings WHERE PaymentStatus = 'Paid' AND YEAR(BookingDate) = YEAR(GETDATE()) " +
-                     "GROUP BY MONTH(BookingDate)";
-        
-        try (Connection cn = DBContext.getConnection();
-             PreparedStatement st = cn.prepareStatement(sql);
-             ResultSet rs = st.executeQuery()) {
-            while (rs.next()) {
-                revenueMap.put(rs.getInt("Month"), rs.getDouble("Rev"));
-            }
-        } catch (Exception e) { e.printStackTrace(); }
-        return revenueMap;
-    }
+   public Map<Integer, Double> getRevenueByMonth() {
+    Map<Integer, Double> revenueMap = new TreeMap<>();
+    String sql = "SELECT MONTH(BookingDate) as Month, SUM(Price) as Rev " +
+                 "FROM Bookings WHERE BookingStatus = 'Completed' AND YEAR(BookingDate) = YEAR(GETDATE()) " +
+                 "GROUP BY MONTH(BookingDate)";
+    
+    try (Connection cn = DBContext.getConnection();
+         PreparedStatement st = cn.prepareStatement(sql);
+         ResultSet rs = st.executeQuery()) {
+        while (rs.next()) {
+            revenueMap.put(rs.getInt("Month"), rs.getDouble("Rev"));
+        }
+    } catch (Exception e) { e.printStackTrace(); }
+    return revenueMap;
+}
 }
