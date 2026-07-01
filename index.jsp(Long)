@@ -206,19 +206,18 @@
                         model.User u = (model.User) session.getAttribute("USER");
                         if (u != null && "ADMIN".equals(u.getRole())) { 
                     %>
-                    <li class="nav-item dropdown">
-                       <!-- Tìm trong menu thả xuống (dropdown) của Admin Task -->
-<li>
-    <a class="dropdown-item" href="${pageContext.request.contextPath}/AdminServlet">
-        Báo Cáo Thống Kê
-    </a>
-</li>
-                        <ul class="dropdown-menu dropdown-menu-dark" style="background-color: #14161a;">
-                            <li><a class="dropdown-item" href="admin/tiers">Cấu hình Hạng</a></li>
-                            <li><a class="dropdown-item" href="admin/promotions">Gửi Khuyến Mãi</a></li>
-                            <a class="dropdown-item" href="${pageContext.request.contextPath}/admin/reports">Báo Cáo Thống Kê</a>
-                        </ul>
-                    </li>
+                   <!-- Tìm đoạn code menu thả xuống (dropdown) trong header -->
+<div class="dropdown">
+    <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+        Admin Task
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#">Cấu hình Hạng</a></li>
+        <li><a class="dropdown-item" href="#">Gửi Khuyến Mãi</a></li>
+        <!-- Thêm link dẫn đến AdminServlet -->
+        <li><a class="dropdown-item" href="${pageContext.request.contextPath}/AdminServlet">Báo Cáo Thống Kê</a></li>
+    </ul>
+</div>
                     <% } %>
                 <% } %>
             </ul>
