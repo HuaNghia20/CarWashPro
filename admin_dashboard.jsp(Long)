@@ -53,7 +53,9 @@
                 <nav class="nav flex-column gap-2">
                     <a class="sidebar-link active" href="AdminServlet"><i class="fa-solid fa-chart-pie me-2"></i> Tổng quan</a>
                     <a class="sidebar-link" href="ManageRewardsServlet"><i class="fa-solid fa-gift me-2"></i> Kho phần thưởng</a>
-                    <a class="sidebar-link" href="index.jsp"><i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Xem Trang Web</a>
+                   <a class="sidebar-link" href="${pageContext.request.contextPath}/index.jsp">
+    <i class="fa-solid fa-arrow-right-from-bracket me-2"></i> Xem Trang Web
+</a>
                 </nav>
             </div>
         </div>
@@ -94,40 +96,35 @@
                             </tr>
                         </thead>
                         <tbody>
-                        <% if(allBookings != null && !allBookings.isEmpty()){
-                            for(Booking b : allBookings){ %>
-                            <tr>
-                                <td><%= b.getBookingID() %></td>
-                                <td><span class="badge bg-light text-dark fw-bold"><%= b.getLicensePlate() %></span></td>
-                                <td><%= b.getServiceType() %></td>
-                                <td><%= b.getBookingDate() %></td>
-                                <td><%= b.getBookingTime() %></td>
-                                <td><%= String.format("%,.0f", b.getPrice()) %> đ</td>
-                                <td>
-                                    <span class="fw-bold text-<%= "Pending".equalsIgnoreCase(b.getStatus()) ? "warning" : "success" %>">
-                                        <%= b.getStatus() %>
-                                    </span>
-                                </td>
-                                <td>
-                                    <% if("Pending".equalsIgnoreCase(b.getStatus())){ %>
-                                        <a href="AdminServlet?action=approve&id=<%= b.getBookingID() %>" class="btn btn-warning btn-sm fw-bold">
-                                            <i class="fa-solid fa-check"></i> Duyệt lịch
-                                        </a>
-                                    <% } else { %>
-                                        <span class="text-muted small">Đã xử lý</span>
-                                    <% } %>
-                                </td>
-                            </tr>
-                        <% } } else { %>
-                            <tr><td colspan="8" class="text-center text-muted">Hệ thống chưa ghi nhận lịch đặt nào hôm nay.</td></tr>
-                        <% } %>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-</body>
-</html>
+                        <!-- Tìm đoạn <tbody> trong file admin_dashboard.jsp của bạn và thay thế bằng đoạn này -->
+<tbody>
+<% if(allBookings != null && !allBookings.isEmpty()){
+    for(Booking b : allBookings){ %>
+    <tr>
+        <td><%= b.getBookingID() %></td>
+        <td><span class="badge bg-light text-dark fw-bold"><%= b.getLicensePlate() %></span></td>
+        <td><%= b.getServiceType() %></td>
+        <td><%= b.getBookingDate() %></td>
+        <td><%= b.getBookingTime() %></td>
+        <td><%= String.format("%,.0f", b.getPrice()) %> đ</td>
+        <td>
+            <%-- Dùng biến b.getStatus() nhưng logic CSS cần khớp với từ khóa trong DB --%>
+            <span class="fw-bold text-<%= "Pending".equalsIgnoreCase(b.getStatus()) ? "warning" : "success" %>">
+                <%= b.getStatus() %>
+            </span>
+        </td>
+        <td>
+            <%-- Đảm bảo kiểm tra đúng trạng thái "Pending" --%>
+            <% if("Pending".equalsIgnoreCase(b.getStatus())){ %>
+                <a href="AdminServlet?action=approve&id=<%= b.getBookingID() %>" class="btn btn-warning btn-sm fw-bold">
+                    <i class="fa-solid fa-check"></i> Duyệt lịch
+                </a>
+            <% } else { %>
+                <span class="text-muted small">Đã xử lý</span>
+            <% } %>
+        </td>
+    </tr>
+<% } } else { %>
+    <tr><td colspan="8" class="text-center text-muted">Hệ thống chưa ghi nhận lịch đặt nào.</td></tr>
+<% } %>
+</tbody>
