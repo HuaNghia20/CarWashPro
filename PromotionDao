@@ -1,0 +1,217 @@
+package dao;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+import model.Promotion;
+import utils.DBContext;
+
+/**
+ * Xử lý dữ liệu cho Task 2 - Khuyến mãi theo hạng.
+ *
+ * Ý tưởng chính:
+ *  - Bảng Promotions: nơi admin quản lý khuyến mãi.
+ *  - Bảng Rewards   : nơi trang Đổi điểm (redeem) đọc để hiển thị cho khách.
+ *  => Mỗi khi tạo/sửa 1 khuyến mãi, ta cũng tạo/sửa 1 dòng bên Rewards
+ *     (lưu RewardID để lần sau sửa cho đúng dòng).
+ */
+public class PromotionDAO {
+
+    // ============================================================
+    // 1) LẤY TẤT CẢ KHUYẾN MÃI (kèm tên hạng) - để hiện danh sách
+    // ============================================================
+    public List<Promotion> getAllPromotions() {
+        List<Promotion> list = new ArrayList<>();
+        // JOIN sang CustomerTiers để lấy tên hạng (Bạc, Vàng...) cho dễ đọc
+        String sql = "SELECT p.*, t.TierName "
+                   + "FROM Promotions p "
+                   + "JOIN CustomerTiers t ON p.MinTierID = t.TierID "
+                   + "ORDER BY p.PromoID DESC";
+
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql);
+             ResultSet rs = st.executeQuery()) {
+
+            while (rs.next()) {
+                list.add(readPromotion(rs)); // dùng hàm phụ đọc dữ liệu cho gọn
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    // ============================================================
+    // 2) LẤY 1 KHUYẾN MÃI THEO ID - để đổ vào form Sửa
+    // ============================================================
+    public Promotion getPromotionById(int promoID) {
+        String sql = "SELECT p.*, t.TierName "
+                   + "FROM Promotions p "
+                   + "JOIN CustomerTiers t ON p.MinTierID = t.TierID "
+                   + "WHERE p.PromoID = ?";
+
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql)) {
+
+            st.setInt(1, promoID);
+            try (ResultSet rs = st.executeQuery()) {
+                if (rs.next()) {
+                    return readPromotion(rs);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // ============================================================
+    // 3) TẠO KHUYẾN MÃI MỚI
+    //    Bước A: tạo 1 dòng bên Rewards -> lấy RewardID vừa tạo
+    //    Bước B: lưu Promotion kèm RewardID đó
+    // ============================================================
+    public boolean createPromotion(Promotion p) {
+        // Bước A: tạo Reward trước, lấy RewardID
+        int rewardID = insertReward(p);
+        if (rewardID <= 0) {
+            return false; // tạo Reward lỗi thì dừng
+        }
+
+        // Bước B: lưu Promotion
+        String sql = "INSERT INTO Promotions "
+                   + "(Title, [Description], DiscountPercent, StartDate, EndDate, MinTierID, IsActive, PointsRequired, RewardID) "
+                   + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql)) {
+
+            st.setNString(1, p.getTitle());
+            st.setNString(2, p.getDescription());
+            st.setInt(3, p.getDiscountPercent());
+            st.setDate(4, p.getStartDate());   // có thể null - không sao
+            st.setDate(5, p.getEndDate());
+            st.setInt(6, p.getMinTierID());
+            st.setBoolean(7, p.isIsActive());
+            st.setInt(8, p.getPointsRequired());
+            st.setInt(9, rewardID);            // lưu liên kết
+
+            return st.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    // ============================================================
+    // 4) SỬA KHUYẾN MÃI
+    //    - Cập nhật bảng Promotions
+    //    - Cập nhật luôn dòng Rewards liên kết -> redeem đổi theo
+    // ============================================================
+    public boolean updatePromotion(Promotion p) {
+        String sql = "UPDATE Promotions "
+                   + "SET Title=?, [Description]=?, DiscountPercent=?, StartDate=?, EndDate=?, "
+                   + "    MinTierID=?, IsActive=?, PointsRequired=? "
+                   + "WHERE PromoID=?";
+
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql)) {
+
+            st.setNString(1, p.getTitle());
+            st.setNString(2, p.getDescription());
+            st.setInt(3, p.getDiscountPercent());
+            st.setDate(4, p.getStartDate());
+            st.setDate(5, p.getEndDate());
+            st.setInt(6, p.getMinTierID());
+            st.setBoolean(7, p.isIsActive());
+            st.setInt(8, p.getPointsRequired());
+            st.setInt(9, p.getPromoID());
+            st.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        // Cập nhật dòng Rewards liên kết (nếu có)
+        if (p.getRewardID() > 0) {
+            updateReward(p);
+        }
+        return true;
+    }
+
+    // ============================================================
+    // HÀM PHỤ - đọc 1 dòng ResultSet ra đối tượng Promotion
+    // (viết 1 lần, dùng lại cho getAll và getById cho đỡ lặp code)
+    // ============================================================
+    private Promotion readPromotion(ResultSet rs) throws Exception {
+        Promotion p = new Promotion();
+        p.setPromoID(rs.getInt("PromoID"));
+        p.setTitle(rs.getString("Title"));
+        p.setDescription(rs.getString("Description"));
+        p.setDiscountPercent(rs.getInt("DiscountPercent"));
+        p.setStartDate(rs.getDate("StartDate"));
+        p.setEndDate(rs.getDate("EndDate"));
+        p.setMinTierID(rs.getInt("MinTierID"));
+        p.setIsActive(rs.getBoolean("IsActive"));
+        p.setPointsRequired(rs.getInt("PointsRequired"));
+        p.setRewardID(rs.getInt("RewardID"));
+        p.setMinTierName(rs.getString("TierName"));
+        return p;
+    }
+
+    // ============================================================
+    // HÀM PHỤ - tạo 1 dòng bên Rewards, trả về RewardID vừa tạo
+    // ============================================================
+    private int insertReward(Promotion p) {
+        String sql = "INSERT INTO Rewards "
+                   + "(RewardName, [Description], PointsRequired, Quantity, [Status], DiscountPercent, MinTierID) "
+                   + "VALUES (?, ?, ?, 100, 1, ?, ?)"; // Quantity=100, Status=1 (đang mở)
+
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+
+            st.setNString(1, p.getTitle());
+            st.setNString(2, p.getDescription());
+            st.setInt(3, p.getPointsRequired());
+            st.setInt(4, p.getDiscountPercent());
+            st.setInt(5, p.getMinTierID());
+            st.executeUpdate();
+
+            // Lấy RewardID mà SQL Server vừa tự sinh
+            try (ResultSet rs = st.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    // ============================================================
+    // HÀM PHỤ - cập nhật dòng Rewards liên kết khi sửa khuyến mãi
+    // ============================================================
+    private void updateReward(Promotion p) {
+        String sql = "UPDATE Rewards "
+                   + "SET RewardName=?, [Description]=?, PointsRequired=?, DiscountPercent=?, "
+                   + "    MinTierID=?, [Status]=? "
+                   + "WHERE RewardID=?";
+
+        try (Connection cn = DBContext.getConnection();
+             PreparedStatement st = cn.prepareStatement(sql)) {
+
+            st.setNString(1, p.getTitle());
+            st.setNString(2, p.getDescription());
+            st.setInt(3, p.getPointsRequired());
+            st.setInt(4, p.getDiscountPercent());
+            st.setInt(5, p.getMinTierID());
+            st.setInt(6, p.isIsActive() ? 1 : 0); // bật/tắt hiển thị bên redeem
+            st.setInt(7, p.getRewardID());
+            st.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
