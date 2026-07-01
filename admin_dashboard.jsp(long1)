@@ -130,14 +130,28 @@
                     </div>
                 </div>
                         <div class="row mb-3">
-   <div class="row mb-3">
+  <div class="row mb-3">
+    <!-- Tìm theo Biển số hoặc Gói rửa -->
     <div class="col-md-6">
-        <input type="text" id="searchInput" 
-               class="form-control bg-dark text-white border-secondary" 
-               style="height: 45px;" 
-               placeholder="🔍 Tìm kiếm biển số hoặc gói rửa..." 
-               onkeyup="filterTable()">
+        <input type="text" id="searchInput" class="form-control bg-dark text-white border-secondary" 
+               placeholder="🔍 Tìm kiếm biển số hoặc gói rửa..." onkeyup="filterTable()">
     </div>
+    <!-- Tìm theo Trạng thái -->
+    <div class="col-md-3">
+        <select id="statusFilter" class="form-select bg-dark text-white border-secondary" onchange="filterTable()">
+            <option value="">Tất cả trạng thái</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Completed">Completed</option>
+            <option value="Pending">Pending</option>
+            <option value="Cancelled">Cancelled</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <div id="searchRevenueDisplay" class="text-white fw-bold p-2 bg-dark rounded border border-secondary">
+            Tổng cộng: 0 đ
+        </div>
+    </div>
+</div>
 </div>
 </div>
 
@@ -146,37 +160,29 @@
                     <div class="table-responsive">
                         <table class="table table-dark table-hover table-bordered align-middle">
                             <thead>
-                                <tr><th>ID</th><th>Biển Số</th><th>Gói Rửa</th><th>Ngày Đặt</th><th>Giờ</th><th>Chi Phí</th><th>Trạng Thái</th><th>Hành Động</th></tr>
+                                <tr><th>ID</th><th>Biển Số</th><th>Gói Rửa</th><th>Ngày Đặt</th><th>Giờ</th><th>Chi Phí</th><th>Trạng Thái</th></tr>
                             </thead>
                             <tbody>
-                            <% if(allBookings != null && !allBookings.isEmpty()){
-                                for(Booking b : allBookings){ %>
-                                <tr>
-                                    <td>#<%= b.getBookingID() %></td>
-                                    <td><span class="badge bg-light text-dark fw-bold"><%= b.getLicensePlate() %></span></td>
-                                    <td><%= b.getServiceType() %></td>
-                                    <td><%= b.getBookingDate() %></td>
-                                    <td><%= b.getBookingTime() %></td>
-                                    <td><%= String.format("%,.0f", b.getPrice()) %> đ</td>
-                                    <td>
-                                        <span class="fw-bold text-<%= "Pending".equalsIgnoreCase(b.getStatus()) ? "warning" : "success" %>">
-                                            <%= b.getStatus() %>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <% if("Pending".equalsIgnoreCase(b.getStatus())){ %>
-                                            <a href="<%= ctx %>/AdminServlet?action=approve&id=<%= b.getBookingID() %>" class="btn btn-warning btn-sm fw-bold">
-                                                <i class="fa-solid fa-check"></i> Duyệt
-                                            </a>
-                                        <% } else { %>
-                                            <span class="text-muted small">Đã xử lý</span>
-                                        <% } %>
-                                    </td>
-                                </tr>
-                            <% } } else { %>
-                                <tr><td colspan="8" class=\"text-center text-muted\">Chưa có lịch đặt nào.</td></tr>
-                            <% } %>
-                            </tbody>
+<% if(allBookings != null && !allBookings.isEmpty()){
+    for(Booking b : allBookings){ %>
+    <tr>
+        <td><%= b.getBookingID() %></td>
+        <td><span class="badge bg-light text-dark fw-bold"><%= b.getLicensePlate() %></span></td>
+        <td><%= b.getServiceType() %></td>
+        <td><%= b.getBookingDate() %></td>
+        <td><%= b.getBookingTime() %></td>
+        <td><%= String.format("%,.0f", b.getPrice()) %> đ</td>
+        <td>
+            <span class="fw-bold text-<%= "Pending".equalsIgnoreCase(b.getStatus()) ? "warning" : "success" %>">
+                <%= b.getStatus() %>
+            </span>
+        </td>
+        <!-- XÓA TOÀN BỘ CẶP <td>...</td> NÀY -->
+    </tr>
+<% } } else { %>
+    <tr><td colspan="7" class="text-center text-muted">Hệ thống chưa ghi nhận lịch đặt nào.</td></tr>
+<% } %>
+</tbody>
                         </table>
                     </div>
                 </div>
@@ -297,30 +303,48 @@
         </div>
     </div>
 </div>
-            <script>
+           
+<script>
 function filterTable() {
     let input = document.getElementById("searchInput");
-    let filter = input.value.toUpperCase();
+    let select = document.getElementById("statusFilter");
+    let filterText = input.value.toUpperCase();
+    let filterStatus = select.value.toUpperCase();
+    
     let table = document.querySelector(".table");
     let tr = table.getElementsByTagName("tr");
+    let total = 0; // Biến tính tổng
 
     for (let i = 1; i < tr.length; i++) {
-        // Cột 1 là Biển số, Cột 2 là Gói rửa
         let tdLicense = tr[i].getElementsByTagName("td")[1];
         let tdPackage = tr[i].getElementsByTagName("td")[2];
+        let tdStatus = tr[i].getElementsByTagName("td")[6];
+        let tdPrice = tr[i].getElementsByTagName("td")[5]; // Cột Chi Phí
         
-        if (tdLicense || tdPackage) {
-            let txtValue1 = tdLicense.textContent || tdLicense.innerText;
-            let txtValue2 = tdPackage.textContent || tdPackage.innerText;
+        if (tdLicense && tdPackage && tdStatus && tdPrice) {
+            let licenseVal = tdLicense.textContent.toUpperCase();
+            let packageVal = tdPackage.textContent.toUpperCase();
+            let statusVal = tdStatus.textContent.trim().toUpperCase();
             
-            if (txtValue1.toUpperCase().indexOf(filter) > -1 || txtValue2.toUpperCase().indexOf(filter) > -1) {
+            let matchStatus = (filterStatus === "" || statusVal === filterStatus);
+            let matchText = (licenseVal.indexOf(filterText) > -1 || packageVal.indexOf(filterText) > -1);
+            
+            if (matchStatus && matchText) {
                 tr[i].style.display = "";
+                // Cộng tiền: loại bỏ chữ "đ" và dấu phẩy, ép sang số
+                let price = parseFloat(tdPrice.textContent.replace(/[^0-9]/g, ''));
+                total += price;
             } else {
                 tr[i].style.display = "none";
             }
         }
     }
+    // Hiển thị tổng
+    document.getElementById("searchRevenueDisplay").innerText = 
+        "Tổng cộng: " + total.toLocaleString('vi-VN') + " đ";
 }
+// Gọi hàm 1 lần để tính tổng mặc định khi trang vừa load
+filterTable();
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
